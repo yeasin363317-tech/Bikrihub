@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bikri Hub | বিক্রি হাব</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛍️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Noto+Serif+Bengali:wght@500;600;700&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- React (production, via CDN — no local build step needed, works on any static host) -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        paper: '#FFFFFF',
+        linen: '#FAF7F1',
+        ink: '#211F1B',
+        inksoft: '#7A7266',
+        forest: '#1F5C46',
+        forestdeep: '#123C2C',
+        gold: '#C79A4B',
+        golddeep: '#A9812F',
+        rose: '#C15B4E',
+        line: '#EAE3D6'
+      },
+      fontFamily: {
+        display: ['Fraunces','serif'],
+        displaybn: ['"Noto Serif Bengali"','serif'],
+        body: ['"Hind Siliguri"','system-ui','sans-serif']
+      }
+    }
+  }
+}
+</script>
+<style>
+  html{scroll-behavior:smooth;}
+  body{font-family:'Hind Siliguri', system-ui, sans-serif; background:#FFFFFF; color:#211F1B;}
+  .font-disp-bn{font-family:'Noto Serif Bengali', serif;}
+  .font-disp-en{font-family:'Fraunces', serif;}
+  ::selection{background:#C79A4B; color:#123C2C;}
+  @media (prefers-reduced-motion: reduce){ *{animation-duration:.001ms !important; transition-duration:.001ms !important;} }
+  .scrollbar-none::-webkit-scrollbar{display:none;}
+  .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .drawer{transition:transform .3s ease;}
+  .fade-in{animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  input:focus, textarea:focus, select:focus{outline:2px solid #1F5C46; outline-offset:1px;}
+</style>
+</head>
+<body class="bg-white text-ink">
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef, createContext, useContext } = React;
+
+/* ================= SUPABASE ================= */
+const SUPABASE_URL = 'https://meeraikrtjmdvxatnlyj.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lZXJhaWtydGptZHZ4YXRubHlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyOTI0ODIsImV4cCI6MjEwMDg2ODQ4Mn0.mG6WlD2zoANOc91vdS5RzxmvqN_MXdIZlgjXmvSXRro';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ================= I18N ================= */
+const DICT = {
+  bn: {
+    navAll:'সব পণ্য', navFashion:'ফ্যাশন', navGadgets:'গ্যাজেট', navContact:'যোগাযোগ',
+    heroEyebrow:'ক্যাশ অন ডেলিভারি সারাদেশে',
+    heroTitle1:'তোমার স্টাইল,', heroTitleEm:'তোমার পরিচয়',
+    heroSub:'ফ্যাশন আর গ্যাজেটের সেরা কালেকশন এখন হাতের নাগালে। অর্ডার করো, টাকা দাও ডেলিভারি পাওয়ার পর।',
+    heroCta1:'কালেকশন দেখুন', heroCta2:'যোগাযোগ করুন',
+    trustCod:'ক্যাশ অন ডেলিভারি', trustCodSub:'অগ্রিম টাকা লাগবে না',
+    trustShip:'সারাদেশে ডেলিভারি', trustShipSub:'ঢাকা ও সকল জেলায়',
+    trustReturn:'সহজ রিটার্ন', trustReturnSub:'৩ দিনের মধ্যে',
+    catTitle:'ক্যাটাগরি অনুযায়ী কিনুন', catSub:'যা খুঁজছেন তা সরাসরি বেছে নিন',
+    catFashionDesc:'পোশাক, জুতা ও এক্সেসরিজ',
+    catGadgetDesc:'ইলেকট্রনিক্স ও স্মার্ট ডিভাইস',
+    shopTitle:'আমাদের কালেকশন', shopSub:'সতর্কতার সাথে বাছাই করা প্রতিটি পণ্য',
+    loading:'পণ্য লোড হচ্ছে...', noProducts:'কোনো পণ্য পাওয়া যায়নি',
+    f1h:'ক্যাশ অন ডেলিভারি', f1p:'হাতে পাওয়ার পর টাকা দিন, কোনো অগ্রিম নয়',
+    f2h:'সারাদেশে ডেলিভারি', f2p:'ঢাকা ও ঢাকার বাইরে সব জেলায় পৌঁছে যাবে',
+    f3h:'সহজ রিটার্ন', f3p:'পণ্যে সমস্যা থাকলে সহজেই পরিবর্তন করা যাবে',
+    f4h:'সরাসরি সাপোর্ট', f4p:'যেকোনো প্রশ্নে ফোনে সরাসরি যোগাযোগ করুন',
+    footAbout:'বাংলাদেশের ফ্যাশন ও গ্যাজেট প্রেমীদের জন্য একটি নির্ভরযোগ্য অনলাইন শপ।',
+    footContactH:'যোগাযোগ', footLinksH:'লিংক', footAdmin:'অ্যাডমিন লগইন', footMade:'তৈরি বাংলাদেশের জন্য, ভালোবাসা দিয়ে',
+    qvTitle:'পণ্যের বিস্তারিত', qtyLabel:'পরিমাণ', addToCart:'কার্টে যোগ করুন', outOfStock:'স্টকে নেই',
+    onlyLeft:'মাত্র {n}টি বাকি',
+    cartTitle:'কার্ট', subtotal:'সাবটোটাল', checkoutBtn:'চেকআউট করুন', emptyCart:'আপনার কার্ট খালি', remove:'সরান',
+    checkoutTitle:'অর্ডার সম্পন্ন করুন', fullName:'পূর্ণ নাম', phoneNum:'মোবাইল নম্বর', fullAddr:'সম্পূর্ণ ঠিকানা',
+    deliveryArea:'ডেলিভারি এলাকা', insideDhaka:'ঢাকার ভিতরে', outsideDhaka:'ঢাকার বাইরে', orderNote:'অতিরিক্ত নোট (ঐচ্ছিক)',
+    deliveryFee:'ডেলিভারি চার্জ', totalLabel:'সর্বমোট', placeOrder:'COD-তে অর্ডার করুন',
+    orderSuccessH:'অর্ডার সফল হয়েছে!', orderSuccessP:'আমরা শীঘ্রই আপনার সাথে যোগাযোগ করব।', continueShopping:'কেনাকাটা চালিয়ে যান',
+    toastAdded:'কার্টে যোগ করা হয়েছে', toastRemoved:'কার্ট থেকে সরানো হয়েছে', errGeneric:'সমস্যা হয়েছে, আবার চেষ্টা করুন',
+  },
+  en: {
+    navAll:'All Products', navFashion:'Fashion', navGadgets:'Gadgets', navContact:'Contact',
+    heroEyebrow:'Cash on Delivery, nationwide',
+    heroTitle1:'Your style,', heroTitleEm:'your identity',
+    heroSub:'The finest fashion and gadgets, now within reach. Order today, pay only when it arrives.',
+    heroCta1:'Shop Collection', heroCta2:'Get in Touch',
+    trustCod:'Cash on Delivery', trustCodSub:'No advance payment',
+    trustShip:'Nationwide Shipping', trustShipSub:'Dhaka & every district',
+    trustReturn:'Easy Returns', trustReturnSub:'Within 3 days',
+    catTitle:'Shop by Category', catSub:'Find exactly what you are looking for',
+    catFashionDesc:'Apparel, footwear & accessories',
+    catGadgetDesc:'Electronics & smart devices',
+    shopTitle:'Our Collection', shopSub:'Every piece, carefully curated',
+    loading:'Loading products...', noProducts:'No products found',
+    f1h:'Cash on Delivery', f1p:'Pay only after you receive your order',
+    f2h:'Nationwide Shipping', f2p:'Delivered across Dhaka and every district',
+    f3h:'Easy Returns', f3p:'Facing an issue? Exchange it easily',
+    f4h:'Direct Support', f4p:'Call us directly for any question',
+    footAbout:'A trusted online shop for Bangladeshi fashion and gadget lovers.',
+    footContactH:'Contact', footLinksH:'Links', footAdmin:'Admin Login', footMade:'Made for Bangladesh, with love',
+    qvTitle:'Product Details', qtyLabel:'Quantity', addToCart:'Add to Cart', outOfStock:'Out of stock',
+    onlyLeft:'Only {n} left',
+    cartTitle:'Cart', subtotal:'Subtotal', checkoutBtn:'Checkout', emptyCart:'Your cart is empty', remove:'Remove',
+    checkoutTitle:'Complete Your Order', fullName:'Full Name', phoneNum:'Mobile Number', fullAddr:'Full Address',
+    deliveryArea:'Delivery Area', insideDhaka:'Inside Dhaka', outsideDhaka:'Outside Dhaka', orderNote:'Additional Note (optional)',
+    deliveryFee:'Delivery Fee', totalLabel:'Total', placeOrder:'Place Order (COD)',
+    orderSuccessH:'Order Placed!', orderSuccessP:"We'll contact you shortly to confirm.", continueShopping:'Continue Shopping',
+    toastAdded:'Added to cart', toastRemoved:'Removed from cart', errGeneric:'Something went wrong, try again',
+  }
+};
+const CAT_LABEL = { bn:{Fashion:'ফ্যাশন', Gadgets:'গ্যাজেট'}, en:{Fashion:'Fashion', Gadgets:'Gadgets'} };
+const fmtMoney = (n) => '৳' + Number(n||0).toLocaleString('en-US');
+
+/* ================= APP CONTEXT ================= */
+const AppCtx = createContext(null);
+const useApp = () => useContext(AppCtx);
+
+/* ================= TOAST ================= */
+function useToast(){
+  const [msg, setMsg] = useState(null);
+  const timer = useRef(null);
+  const show = (m) => { setMsg(m); clearTimeout(timer.current); timer.current = setTimeout(()=>setMsg(null), 2200); };
+  return [msg, show];
+}
+
+/* ================= ROOT APP ================= */
+function App(){
+  const [lang, setLang] = useState('bn');
+  const [products, setProducts] = useState([]);
+  const [settings, setSettings] = useState({ site_name_en:'Bikri Hub', site_name_bn:'বিক্রি হাব', logo_url:null, hero_image_url:null, phone:'', address:'', delivery_charge_dhaka:70, delivery_charge_outside:130 });
+  const [cart, setCart] = useState([]);
+  const [route, setRoute] = useState(window.location.hash.startsWith('#admin') ? 'admin' : 'store');
+  const [toastMsg, showToast] = useToast();
+
+  useEffect(()=>{
+    const onHash = ()=> setRoute(window.location.hash.startsWith('#admin') ? 'admin' : 'store');
+    window.addEventListener('hashchange', onHash);
+    return ()=> window.removeEventListener('hashchange', onHash);
+  },[]);
+
+  useEffect(()=>{
+    (async ()=>{
+      const { data: s } = await sb.from('site_settings').select('*').eq('id',1).single();
+      if(s) setSettings(s);
+      const { data: p } = await sb.from('products').select('*').order('created_at',{ascending:false});
+      if(p) setProducts(p);
+    })();
+  },[]);
+
+  const t = (key) => DICT[lang][key] || key;
+
+  const addToCart = (product, qty) => {
+    setCart(prev=>{
+      const ex = prev.find(c=>c.id===product.id);
+      if(ex){ return prev.map(c=> c.id===product.id ? {...c, qty: Math.min(c.qty+qty, product.stock ?? 999)} : c); }
+      return [...prev, { id:product.id, name:product.name, price:product.price, image_url:product.image_url, qty: Math.min(qty, product.stock ?? 999), stock: product.stock }];
+    });
+    showToast('✅ ' + t('toastAdded'));
+  };
+  const changeQty = (id, delta) => {
+    setCart(prev=>{
+      const next = prev.map(c=> c.id===id ? {...c, qty:c.qty+delta} : c).filter(c=>c.qty>0);
+      return next;
+    });
+  };
+  const removeFromCart = (id) => { setCart(prev=>prev.filter(c=>c.id!==id)); showToast(t('toastRemoved')); };
+  const clearCart = () => setCart([]);
+
+  const ctx = { lang, setLang, t, products, setProducts, settings, setSettings, cart, addToCart, changeQty, removeFromCart, clearCart, showToast };
+
+  return (
+    <AppCtx.Provider value={ctx}>
+      {route === 'admin' ? <AdminApp/> : <StoreApp/>}
+      <Toast msg={toastMsg}/>
+    </AppCtx.Provider>
+  );
+}
+
+function Toast({msg}){
+  if(!msg) return null;
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-ink text-white px-5 py-3 rounded-full text-sm font-semibold shadow-2xl z-[500] fade-in">
+      {msg}
+    </div>
+  );
+}
+
+/* ================= STORE APP ================= */
+function StoreApp(){
+  const { settings } = useApp();
+  const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [successOrder, setSuccessOrder] = useState(null);
+  const [quickView, setQuickView] = useState(null);
+  const [category, setCategory] = useState('all');
+  const [navOpen, setNavOpen] = useState(false);
+
+  useEffect(()=>{
+    document.title = (settings.site_name_en||'Bikri Hub') + ' | ' + (settings.site_name_bn||'বিক্রি হাব');
+  },[settings]);
+
+  return (
+    <div className="bg-white min-h-screen">
+      <Header cartOpen={cartOpen} setCartOpen={setCartOpen} category={category} setCategory={setCategory} navOpen={navOpen} setNavOpen={setNavOpen}/>
+      <Hero category={category} setCategory={setCategory}/>
+      <TrustStrip/>
+      <CategorySection category={category} setCategory={setCategory}/>
+      <ProductSection category={category} setCategory={setCategory} onOpenQuickView={setQuickView} onAddToCart={()=>{}}/>
+      <FeatureGrid/>
+      <Footer/>
+
+      {quickView && <QuickViewModal product={quickView} onClose={()=>setQuickView(null)}/>}
+      <CartDrawer open={cartOpen} onClose={()=>setCartOpen(false)} onCheckout={()=>{ setCartOpen(false); setCheckoutOpen(true); }}/>
+      {checkoutOpen && <CheckoutModal onClose={()=>setCheckoutOpen(false)} onSuccess={(o)=>{ setCheckoutOpen(false); setSuccessOrder(o); }}/>}
+      {successOrder && <SuccessModal order={successOrder} onClose={()=>setSuccessOrder(null)}/>}
+    </div>
+  );
+}
+
+/* ---------- Header ---------- */
+function Header({cartOpen, setCartOpen, category, setCategory, navOpen, setNavOpen}){
+  const { t, lang, setLang, settings, cart } = useApp();
+  const count = cart.reduce((s,c)=>s+c.qty,0);
+  const displayName = lang==='bn' ? (settings.site_name_bn||'বিক্রি হাব') : (settings.site_name_en||'Bikri Hub');
+  const fontCls = lang==='bn' ? 'font-disp-bn' : 'font-disp-en';
+
+  const navItem = (cat, key, href) => (
+    <a href={href||'#shop'} onClick={(e)=>{ if(cat!==undefined){ setCategory(cat); } setNavOpen(false); }}
+      className={"px-4 py-2 rounded-full text-[15px] font-medium transition " + (category===cat ? "bg-forest text-white" : "text-ink hover:bg-linen")}>
+      {t(key)}
+    </a>
+  );
+
+  return (
+    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-line">
+      <div className="max-w-7xl mx-auto px-5 py-3.5 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          {settings.logo_url
+            ? <img src={settings.logo_url} className="w-11 h-11 rounded-xl object-cover border border-line" alt="logo"/>
+            : <div className="w-11 h-11 rounded-xl bg-forest text-gold flex items-center justify-center font-bold font-disp-en text-lg">B</div>}
+          <div className="leading-tight">
+            <div className={fontCls + " text-xl font-semibold text-ink"}>{displayName}</div>
+          </div>
+        </div>
+
+        <nav className="hidden lg:flex items-center gap-1">
+          {navItem('all','navAll')}
+          {navItem('Fashion','navFashion')}
+          {navItem('Gadgets','navGadgets')}
+          {navItem(undefined,'navContact','#contact')}
+        </nav>
+
+        <div className="flex items-center gap-2">
+          <div className="flex bg-linen rounded-full p-1 text-xs font-bold font-disp-en">
+            <button onClick={()=>setLang('bn')} className={"px-3 py-1.5 rounded-full transition " + (lang==='bn' ? "bg-forest text-white":"text-inksoft")}>বাং</button>
+            <button onClick={()=>setLang('en')} className={"px-3 py-1.5 rounded-full transition " + (lang==='en' ? "bg-forest text-white":"text-inksoft")}>EN</button>
+          </div>
+          <button onClick={()=>setCartOpen(true)} className="relative w-11 h-11 rounded-xl bg-forest text-white flex items-center justify-center hover:bg-forestdeep transition">
+            🛍️
+            {count>0 && <span className="absolute -top-1.5 -right-1.5 bg-rose text-white text-[10px] font-bold min-w-[19px] h-[19px] rounded-full flex items-center justify-center px-1 border-2 border-white">{count}</span>}
+          </button>
+          <button className="lg:hidden w-11 h-11 rounded-xl border border-line flex items-center justify-center" onClick={()=>setNavOpen(!navOpen)}>☰</button>
+        </div>
+      </div>
+      {navOpen && (
+        <nav className="lg:hidden flex flex-col gap-1 px-5 pb-4">
+          {navItem('all','navAll')}
+          {navItem('Fashion','navFashion')}
+          {navItem('Gadgets','navGadgets')}
+          {navItem(undefined,'navContact','#contact')}
+        </nav>
+      )}
+    </header>
+  );
+}
+
+/* ---------- Hero ---------- */
+function Hero({setCategory}){
+  const { t, lang, settings } = useApp();
+  const fontCls = lang==='bn' ? 'font-disp-bn' : 'font-disp-en';
+  return (
+    <section className="max-w-7xl mx-auto px-5 pt-10 md:pt-16 pb-8">
+      <div className="grid md:grid-cols-2 gap-10 items-center">
+        <div>
+          <div className="inline-flex items-center gap-2 border border-gold/50 bg-gold/10 text-golddeep text-xs font-bold px-4 py-2 rounded-full mb-6">
+            ✅ {t('heroEyebrow')}
+          </div>
+          <h1 className={fontCls + " text-[40px] md:text-[58px] leading-[1.05] font-semibold text-ink mb-6"}>
+            {t('heroTitle1')} <br/>
+            <em className="not-italic text-forest">{t('heroTitleEm')}</em>
+          </h1>
+          <p className="text-inksoft text-base md:text-lg max-w-md mb-8 leading-relaxed">{t('heroSub')}</p>
+          <div className="flex flex-wrap gap-3">
+            <a href="#shop" onClick={()=>setCategory('all')} className="bg-forest text-white px-7 py-3.5 rounded-full font-semibold hover:bg-forestdeep transition shadow-lg shadow-forest/20">{t('heroCta1')}</a>
+            <a href="#contact" className="border border-ink/20 text-ink px-7 py-3.5 rounded-full font-semibold hover:bg-linen transition">{t('heroCta2')}</a>
+          </div>
+        </div>
+        <div className="relative">
+          <div className="aspect-[4/5] rounded-[28px] overflow-hidden bg-linen border border-line relative">
+            {settings.hero_image_url
+              ? <img src={settings.hero_image_url} className="w-full h-full object-cover" alt="hero"/>
+              : <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-linen via-white to-linen">
+                  <span className="text-7xl opacity-30">🛍️</span>
+                </div>}
+          </div>
+          <div className="absolute -bottom-5 -left-5 bg-white rounded-2xl shadow-xl border border-line px-5 py-4 hidden sm:block">
+            <div className={fontCls + " text-2xl font-bold text-forest"}>৳0</div>
+            <div className="text-xs text-inksoft">{lang==='bn'?'অগ্রিম টাকা':'advance payment'}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- Trust strip ---------- */
+function TrustStrip(){
+  const { t } = useApp();
+  const items = [
+    ['💵', t('trustCod'), t('trustCodSub')],
+    ['🚚', t('trustShip'), t('trustShipSub')],
+    ['🔁', t('trustReturn'), t('trustReturnSub')],
+  ];
+  return (
+    <section className="max-w-7xl mx-auto px-5 py-6 border-y border-line grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {items.map(([ic,h,p],i)=>(
+        <div key={i} className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-linen flex items-center justify-center text-lg">{ic}</div>
+          <div><div className="font-semibold text-sm text-ink">{h}</div><div className="text-xs text-inksoft">{p}</div></div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+/* ---------- Category section ---------- */
+function CategorySection({setCategory}){
+  const { t, lang, products } = useApp();
+  const fontCls = lang==='bn' ? 'font-disp-bn' : 'font-disp-en';
+  const cardFor = (cat, label, desc, emoji) => {
+    const sample = products.find(p=>p.category===cat && p.image_url);
+    return (
+      <a href="#shop" onClick={()=>setCategory(cat)} className="group relative rounded-3xl overflow-hidden border border-line aspect-[16/10] flex items-end p-7 bg-linen">
+        {sample ? <img src={sample.image_url} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-500" alt=""/>
+          : <div className="absolute inset-0 flex items-center justify-center text-6xl opacity-20">{emoji}</div>}
+        <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/10 to-transparent"></div>
+        <div className="relative text-white">
+          <div className={fontCls + " text-2xl font-semibold mb-1"}>{label}</div>
+          <div className="text-sm opacity-85">{desc}</div>
+        </div>
+      </a>
+    );
+  };
+  return (
+    <section className="max-w-7xl mx-auto px-5 py-14">
+      <div className="mb-8">
+        <h2 className={fontCls + " text-3xl font-semibold text-ink"}>{t('catTitle')}</h2>
+        <p className="text-inksoft mt-1">{t('catSub')}</p>
+      </div>
+      <div className="grid md:grid-cols-2 gap-5">
+        {cardFor('Fashion', CAT_LABEL[lang].Fashion, t('catFashionDesc'), '👗')}
+        {cardFor('Gadgets', CAT_LABEL[lang].Gadgets, t('catGadgetDesc'), '🎧')}
+      </div>
+    </section>
+  );
+}
+
+/* ---------- Product section ---------- */
+function ProductSection({category, setCategory, onOpenQuickView}){
+  const { t, lang, products, addToCart } = useApp();
+  const fontCls = lang==='bn' ? 'font-disp-bn' : 'font-disp-en';
+  const list = category==='all' ? products : products.filter(p=>p.category===category);
+
+  return (
+    <section id="shop" className="max-w-7xl mx-auto px-5 py-10">
+      <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
+        <div>
+          <h2 className={fontCls + " text-3xl font-semibold text-ink"}>{t('shopTitle')}</h2>
+          <p className="text-inksoft mt-1">{t('shopSub')}</p>
+        </div>
+        <div className="flex gap-2">
+          {['all','Fashion','Gadgets'].map(c=>(
+            <button key={c} onClick={()=>setCategory(c)} className={"px-4 py-2 rounded-full text-sm font-semibold border transition " + (category===c ? "bg-ink text-white border-ink":"border-line text-inksoft hover:border-ink/40")}>
+              {c==='all' ? t('navAll') : CAT_LABEL[lang][c]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {list.length===0 ? (
+        <div className="text-center py-20 border border-dashed border-line rounded-2xl text-inksoft">
+          <div className="text-4xl mb-3">🛍️</div>{t('noProducts')}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+          {list.map(p=> <ProductCard key={p.id} p={p} onOpen={()=>onOpenQuickView(p)} onAdd={()=>addToCart(p,1)}/>)}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ProductCard({p, onOpen, onAdd}){
+  const { t, lang } = useApp();
+  const outOfStock = p.stock === 0;
+  const lowStock = p.stock !== null && p.stock > 0 && p.stock <= 5;
+  return (
+    <div className="group border border-line rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-ink/5 transition">
+      <div className="aspect-square bg-linen relative cursor-pointer overflow-hidden" onClick={onOpen}>
+        {p.image_url
+          ? <img src={p.image_url} alt={p.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition duration-500"/>
+          : <div className="w-full h-full flex items-center justify-center text-4xl opacity-25">🖼️</div>}
+        <span className="absolute top-3 right-3 bg-white/90 backdrop-blur text-[10px] font-bold text-forest px-2.5 py-1 rounded-full border border-line">COD</span>
+        <span className="absolute top-3 left-3 bg-ink/85 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full">{CAT_LABEL[lang][p.category]||p.category}</span>
+      </div>
+      <div className="p-4 flex flex-col gap-2">
+        <h3 onClick={onOpen} className="text-sm font-medium text-ink cursor-pointer leading-snug line-clamp-2 min-h-[2.5em]">{p.name}</h3>
+        <div className="flex items-baseline gap-2">
+          <span className="font-disp-en font-bold text-lg text-forest">{fmtMoney(p.price)}</span>
+          {p.compare_price > p.price && <span className="text-xs text-inksoft/60 line-through">{fmtMoney(p.compare_price)}</span>}
+        </div>
+        {lowStock && <span className="text-xs text-rose font-medium">{t('onlyLeft').replace('{n}',p.stock)}</span>}
+        <button disabled={outOfStock} onClick={onAdd} className="mt-1 bg-ink text-white text-xs font-semibold rounded-full py-2.5 hover:bg-forest transition disabled:opacity-40 disabled:cursor-not-allowed">
+          {outOfStock ? t('outOfStock') : t('addToCart')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Quick view modal ---------- */
+function QuickViewModal({product, onClose}){
+  const { t, lang, addToCart } = useApp();
+  const [qty, setQty] = useState(1);
+  const max = product.stock ?? 999;
+  return (
+    <Modal onClose={onClose} wide>
+      <div className="grid md:grid-cols-2 gap-7">
+        <div className="aspect-square rounded-2xl bg-linen overflow-hidden">
+          {product.image_url ? <img src={product.image_url} className="w-full h-full object-cover" alt=""/> : <div className="w-full h-full flex items-center justify-center text-5xl opacity-25">🖼️</div>}
+        </div>
+        <div>
+          <span className="inline-block bg-linen text-inksoft text-xs font-semibold px-3 py-1 rounded-full mb-3">{CAT_LABEL[lang][product.category]}</span>
+          <h2 className="font-disp-en text-2xl font-semibold text-ink mb-2">{product.name}</h2>
+          <div className="flex items-baseline gap-3 mb-4">
+            <span className="font-disp-en text-2xl font-bold text-forest">{fmtMoney(product.price)}</span>
+            {product.compare_price > product.price && <span className="text-inksoft/60 line-through">{fmtMoney(product.compare_price)}</span>}
+          </div>
+          <p className="text-inksoft text-sm leading-relaxed mb-6">{product.description}</p>
+          <label className="text-xs font-semibold text-inksoft block mb-2">{t('qtyLabel')}</label>
+          <div className="flex items-center border border-line rounded-full w-fit mb-6">
+            <button onClick={()=>setQty(q=>Math.max(1,q-1))} className="w-10 h-10 text-lg font-bold text-ink">−</button>
+            <span className="w-10 text-center font-semibold">{qty}</span>
+            <button onClick={()=>setQty(q=>Math.min(max,q+1))} className="w-10 h-10 text-lg font-bold text-ink">+</button>
+          </div>
+          <button onClick={()=>{ addToCart(product, qty); onClose(); }} className="w-full bg-forest text-white font-semibold py-3.5 rounded-full hover:bg-forestdeep transition">
+            🛍️ {t('addToCart')}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/* ---------- Generic Modal ---------- */
+function Modal({onClose, children, wide, title}){
+  return (
+    <div className="fixed inset-0 z-[200] bg-ink/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={(e)=>{ if(e.target===e.currentTarget) onClose(); }}>
+      <div className={"bg-white rounded-3xl w-full " + (wide ? "max-w-3xl":"max-w-md") + " max-h-[88vh] overflow-y-auto shadow-2xl"}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line sticky top-0 bg-white z-10">
+          <h3 className="font-disp-en font-semibold text-lg text-ink">{title || ''}</h3>
+          <button onClick={onClose} className="w-9 h-9 rounded-full bg-linen text-ink flex items-center justify-center hover:bg-line">✕</button>
+        </div>
+        <div className="p-6">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Cart drawer ---------- */
+function CartDrawer({open, onClose, onCheckout}){
+  const { t, cart, changeQty, removeFromCart } = useApp();
+  const subtotal = cart.reduce((s,c)=>s+c.price*c.qty,0);
+  return (
+    <React.Fragment>
+      <div className={"fixed inset-0 bg-ink/40 z-[210] transition-opacity " + (open ? "opacity-100 pointer-events-auto":"opacity-0 pointer-events-none")} onClick={onClose}></div>
+      <div className={"fixed top-0 right-0 bottom-0 w-full sm:w-[420px] bg-white z-[220] drawer flex flex-col shadow-2xl " + (open ? "translate-x-0":"translate-x-full")}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line">
+          <h3 className="font-disp-en font-semibold text-lg">🛍️ {t('cartTitle')}</h3>
+          <button onClick={onClose} className="w-9 h-9 rounded-full bg-linen flex items-center justify-center">✕</button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-3">
+          {cart.length===0 ? (
+            <div className="text-center py-16 text-inksoft"><div className="text-4xl mb-2">🛍️</div>{t('emptyCart')}</div>
+          ) : cart.map(c=>(
+            <div key={c.id} className="flex gap-3 py-4 border-b border-line">
+              <img src={c.image_url||''} className="w-16 h-16 rounded-xl object-cover bg-linen"/>
+              <div className="flex-1">
+                <div className="text-sm font-medium mb-1.5">{c.name}</div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center border border-line rounded-full scale-90 origin-left">
+                    <button onClick={()=>changeQty(c.id,-1)} className="w-7 h-7 text-sm font-bold">−</button>
+                    <span className="w-7 text-center text-sm font-semibold">{c.qty}</span>
+                    <button onClick={()=>changeQty(c.id,1)} className="w-7 h-7 text-sm font-bold">+</button>
+                  </div>
+                  <b className="font-disp-en text-forest">{fmtMoney(c.price*c.qty)}</b>
+                </div>
+                <button onClick={()=>removeFromCart(c.id)} className="text-xs text-rose font-medium mt-1">✕ {t('remove')}</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="px-6 py-5 border-t border-line">
+          <div className="flex justify-between font-disp-en font-bold text-lg mb-4"><span>{t('subtotal')}</span><span>{fmtMoney(subtotal)}</span></div>
+          <button disabled={cart.length===0} onClick={onCheckout} className="w-full bg-forest text-white font-semibold py-3.5 rounded-full disabled:opacity-40 hover:bg-forestdeep transition">{t('checkoutBtn')}</button>
+        </div>
+      </div>
+    </React.Fragment>
+  );
+}
+
+/* ---------- Checkout modal ---------- */
+function CheckoutModal({onClose, onSuccess}){
+  const { t, lang, cart, settings, clearCart, showToast } = useApp();
+  const [form, setForm] = useState({ name:'', phone:'', address:'', city:'Dhaka', notes:'' });
+  const [loading, setLoading] = useState(false);
+  const subtotal = cart.reduce((s,c)=>s+c.price*c.qty,0);
+  const fee = form.city==='Dhaka' ? Number(settings.delivery_charge_dhaka||70) : Number(settings.delivery_charge_outside||130);
+  const total = subtotal + fee;
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try{
+      const orderNumber = 'BH' + Date.now().toString().slice(-8) + Math.floor(Math.random()*90+10);
+      const { data: order, error: oErr } = await sb.from('orders').insert({
+        order_number: orderNumber, customer_name: form.name, phone: form.phone, address: form.address,
+        city: form.city, notes: form.notes, subtotal, total, status:'pending'
+      }).select().single();
+      if(oErr) throw oErr;
+      const items = cart.map(c=>({ order_id: order.id, product_id: c.id, product_name: c.name, price: c.price, quantity: c.qty }));
+      const { error: iErr } = await sb.from('order_items').insert(items);
+      if(iErr) throw iErr;
+      clearCart();
+      onSuccess({ order_number: orderNumber });
+    }catch(err){
+      console.error(err);
+      showToast('⚠️ ' + t('errGeneric'));
+    }finally{ setLoading(false); }
+  };
+
+  return (
+    <Modal onClose={onClose} title={t('checkoutTitle')}>
+      <form onSubmit={submit} className="space-y-4">
+        <Field label={t('fullName')}><input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+        <Field label={t('phoneNum')}><input required type="tel" placeholder="01XXXXXXXXX" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+        <Field label={t('fullAddr')}><textarea required rows="2" value={form.address} onChange={e=>setForm({...form,address:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+        <Field label={t('deliveryArea')}>
+          <select value={form.city} onChange={e=>setForm({...form,city:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen">
+            <option value="Dhaka">{t('insideDhaka')}</option>
+            <option value="Outside">{t('outsideDhaka')}</option>
+          </select>
+        </Field>
+        <Field label={t('orderNote')}><textarea rows="2" value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+
+        <div className="bg-linen rounded-2xl p-4 space-y-1.5">
+          <div className="flex justify-between text-sm"><span className="text-inksoft">{t('subtotal')}</span><b>{fmtMoney(subtotal)}</b></div>
+          <div className="flex justify-between text-sm"><span className="text-inksoft">{t('deliveryFee')}</span><b>{fmtMoney(fee)}</b></div>
+          <div className="flex justify-between font-disp-en font-bold text-base pt-1.5 border-t border-line/60"><span>{t('totalLabel')}</span><span>{fmtMoney(total)}</span></div>
+        </div>
+
+        <button type="submit" disabled={loading} className="w-full bg-rose text-white font-semibold py-3.5 rounded-full hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2">
+          {loading ? <span className="spinner"></span> : '💵'} {t('placeOrder')}
+        </button>
+      </form>
+    </Modal>
+  );
+}
+function Field({label, children}){
+  return <div><label className="text-xs font-semibold text-inksoft block mb-1.5">{label}</label>{children}</div>;
+}
+
+/* ---------- Success modal ---------- */
+function SuccessModal({order, onClose}){
+  const { t } = useApp();
+  return (
+    <Modal onClose={onClose}>
+      <div className="text-center py-4">
+        <div className="text-5xl mb-3">🎉</div>
+        <h2 className="font-disp-en text-xl font-bold text-ink mb-1">{t('orderSuccessH')}</h2>
+        <p className="text-inksoft text-sm mb-1">{t('orderSuccessP')}</p>
+        <p className="font-disp-en font-bold text-forest mb-6">#{order.order_number}</p>
+        <button onClick={onClose} className="w-full bg-forest text-white font-semibold py-3.5 rounded-full hover:bg-forestdeep transition">{t('continueShopping')}</button>
+      </div>
+    </Modal>
+  );
+}
+
+/* ---------- Feature grid ---------- */
+function FeatureGrid(){
+  const { t } = useApp();
+  const items = [['💵','f1h','f1p'],['🚚','f2h','f2p'],['🔁','f3h','f3p'],['📞','f4h','f4p']];
+  return (
+    <section className="bg-linen">
+      <div className="max-w-7xl mx-auto px-5 py-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        {items.map(([ic,h,p],i)=>(
+          <div key={i} className="flex gap-4">
+            <div className="w-12 h-12 rounded-full bg-forest text-gold flex items-center justify-center text-xl flex-shrink-0">{ic}</div>
+            <div><h4 className="font-disp-en font-semibold text-ink mb-1">{t(h)}</h4><p className="text-sm text-inksoft leading-relaxed">{t(p)}</p></div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ---------- Footer ---------- */
+function Footer(){
+  const { t, lang, settings } = useApp();
+  const fontCls = lang==='bn' ? 'font-disp-bn' : 'font-disp-en';
+  const displayName = lang==='bn' ? (settings.site_name_bn||'বিক্রি হাব') : (settings.site_name_en||'Bikri Hub');
+  return (
+    <footer id="contact" className="bg-ink text-white/80">
+      <div className="max-w-7xl mx-auto px-5 py-14 grid md:grid-cols-3 gap-10">
+        <div>
+          <h5 className={fontCls + " text-xl font-semibold text-white mb-3"}>{displayName}</h5>
+          <p className="text-sm leading-relaxed opacity-80">{t('footAbout')}</p>
+        </div>
+        <div>
+          <h5 className="text-gold text-sm font-bold mb-3">{t('footContactH')}</h5>
+          <a href={settings.phone ? 'tel:'+settings.phone : '#'} className="block text-sm py-1 opacity-85">📞 {settings.phone || '—'}</a>
+          <a className="block text-sm py-1 opacity-85">📍 {settings.address || '—'}</a>
+        </div>
+        <div>
+          <h5 className="text-gold text-sm font-bold mb-3">{t('footLinksH')}</h5>
+          <a href="#shop" className="block text-sm py-1 opacity-85">{t('navAll')}</a>
+          <a href="#admin" className="block text-sm py-1 opacity-85">{t('footAdmin')}</a>
+        </div>
+      </div>
+      <div className="border-t border-white/10 text-center text-xs opacity-50 py-5">© {new Date().getFullYear()} Bikri Hub — {t('footMade')}</div>
+    </footer>
+  );
+}
+
+/* ================================================================
+   ADMIN APP
+   ================================================================ */
+function AdminApp(){
+  const [session, setSession] = useState(undefined); // undefined = checking, null = logged out
+
+  useEffect(()=>{
+    sb.auth.getSession().then(({data})=> setSession(data.session || null));
+    const { data: sub } = sb.auth.onAuthStateChange((_e, sess)=> setSession(sess));
+    return ()=> sub.subscription.unsubscribe();
+  },[]);
+
+  if(session === undefined) return <div className="min-h-screen flex items-center justify-center text-inksoft">Loading…</div>;
+  return session ? <AdminDashboard/> : <AdminLogin/>;
+}
+
+function AdminLogin(){
+  const [email, setEmail] = useState('');
+  const [pass, setPass] = useState('');
+  const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setLoading(true); setErr('');
+    const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if(error) setErr('ইমেইল বা পাসওয়ার্ড ভুল হয়েছে');
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-linen flex items-center justify-center p-5">
+      <div className="bg-white rounded-3xl shadow-xl border border-line p-9 w-full max-w-sm">
+        <div className="w-14 h-14 rounded-2xl bg-forest text-gold flex items-center justify-center text-2xl mx-auto mb-4">🔐</div>
+        <h2 className="font-disp-en text-xl font-bold text-center text-ink mb-1">Bikri Hub Admin</h2>
+        <p className="text-inksoft text-sm text-center mb-6">অ্যাডমিন প্যানেলে লগইন করুন</p>
+        {err && <div className="bg-rose/10 text-rose text-sm rounded-xl px-4 py-2.5 mb-4">{err}</div>}
+        <form onSubmit={submit} className="space-y-4">
+          <Field label="Email"><input required type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+          <Field label="Password"><input required type="password" value={pass} onChange={e=>setPass(e.target.value)} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+          <button disabled={loading} className="w-full bg-forest text-white font-semibold py-3 rounded-full hover:bg-forestdeep transition flex items-center justify-center gap-2">{loading && <span className="spinner"></span>} Login</button>
+        </form>
+        <a href="#" onClick={(e)=>{e.preventDefault(); window.location.hash='';}} className="block text-center text-sm text-forest mt-5">← দোকানে ফিরে যান</a>
+      </div>
+    </div>
+  );
+}
+
+function AdminDashboard(){
+  const [tab, setTab] = useState('products');
+  const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [settings, setSettings] = useState(null);
+  const [editingProduct, setEditingProduct] = useState(undefined); // undefined=closed, null=new, obj=edit
+  const [viewingOrder, setViewingOrder] = useState(null);
+  const [toastMsg, showToast] = useToast();
+
+  const loadProducts = async () => { const {data} = await sb.from('products').select('*').order('created_at',{ascending:false}); setProducts(data||[]); };
+  const loadOrders = async () => { const {data} = await sb.from('orders').select('*').order('created_at',{ascending:false}); setOrders(data||[]); };
+  const loadSettings = async () => { const {data} = await sb.from('site_settings').select('*').eq('id',1).single(); setSettings(data); };
+
+  useEffect(()=>{ loadProducts(); loadOrders(); loadSettings(); },[]);
+
+  const stats = {
+    products: products.length,
+    orders: orders.length,
+    pending: orders.filter(o=>o.status==='pending').length,
+    revenue: orders.filter(o=>o.status==='delivered').reduce((s,o)=>s+Number(o.total),0)
+  };
+
+  const deleteProduct = async (id) => {
+    if(!confirm('আপনি কি নিশ্চিত এই পণ্যটি মুছে ফেলতে চান?')) return;
+    const { error } = await sb.from('products').delete().eq('id', id);
+    if(error){ showToast('⚠️ মুছতে সমস্যা হয়েছে'); return; }
+    showToast('🗑️ পণ্য মুছে ফেলা হয়েছে'); loadProducts();
+  };
+  const deleteOrder = async (id) => {
+    if(!confirm('এই অর্ডারটি মুছে ফেলতে চান?')) return;
+    await sb.from('order_items').delete().eq('order_id', id);
+    const { error } = await sb.from('orders').delete().eq('id', id);
+    if(error){ showToast('⚠️ মুছতে সমস্যা হয়েছে'); return; }
+    showToast('🗑️ অর্ডার মুছে ফেলা হয়েছে'); loadOrders();
+  };
+
+  return (
+    <div className="min-h-screen bg-linen">
+      <div className="bg-forest text-white px-6 py-3.5 flex items-center justify-between sticky top-0 z-30">
+        <div className="font-disp-en font-bold flex items-center gap-2">🛍️ Bikri Hub <span className="opacity-60 font-normal text-sm font-body">/ Admin</span></div>
+        <div className="flex gap-2">
+          <a href="#" onClick={(e)=>{e.preventDefault(); window.location.hash='';}} className="border border-white/30 text-white text-sm px-4 py-2 rounded-full hover:bg-white/10">দোকান দেখুন</a>
+          <button onClick={()=>sb.auth.signOut()} className="bg-rose text-white text-sm px-4 py-2 rounded-full hover:opacity-90">লগআউট</button>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-5 py-8">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-7">
+          <StatCard label="মোট পণ্য" value={stats.products}/>
+          <StatCard label="মোট অর্ডার" value={stats.orders}/>
+          <StatCard label="পেন্ডিং অর্ডার" value={stats.pending}/>
+          <StatCard label="মোট বিক্রি" value={fmtMoney(stats.revenue)}/>
+        </div>
+
+        <div className="flex gap-2 mb-6 flex-wrap">
+          {[['products','📦 পণ্য'],['orders','🧾 অর্ডার'],['settings','⚙️ সেটিংস']].map(([k,l])=>(
+            <button key={k} onClick={()=>setTab(k)} className={"px-5 py-2.5 rounded-full font-semibold text-sm border transition " + (tab===k ? "bg-forest text-white border-forest":"bg-white border-line text-inksoft")}>{l}</button>
+          ))}
+        </div>
+
+        {tab==='products' && (
+          <div className="bg-white rounded-2xl border border-line p-6">
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="font-disp-en font-semibold text-lg">পণ্য তালিকা</h3>
+              <button onClick={()=>setEditingProduct(null)} className="bg-forest text-white text-sm font-semibold px-4 py-2 rounded-full hover:bg-forestdeep">+ নতুন পণ্য</button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="text-left text-xs uppercase text-inksoft border-b-2 border-line">
+                  <th className="py-2 px-2">ছবি</th><th className="px-2">নাম</th><th className="px-2">ক্যাটাগরি</th><th className="px-2">দাম</th><th className="px-2">স্টক</th><th className="px-2"></th>
+                </tr></thead>
+                <tbody>
+                  {products.map(p=>(
+                    <tr key={p.id} className="border-b border-line">
+                      <td className="py-2 px-2">{p.image_url ? <img src={p.image_url} className="w-10 h-10 rounded-lg object-cover"/> : '—'}</td>
+                      <td className="px-2 font-medium">{p.name}</td>
+                      <td className="px-2"><span className="text-xs bg-linen px-2 py-1 rounded-full">{p.category}</span></td>
+                      <td className="px-2">{fmtMoney(p.price)}</td>
+                      <td className="px-2">{p.stock}</td>
+                      <td className="px-2 whitespace-nowrap">
+                        <button onClick={()=>setEditingProduct(p)} className="w-8 h-8 rounded-lg bg-linen mr-1">✏️</button>
+                        <button onClick={()=>deleteProduct(p.id)} className="w-8 h-8 rounded-lg bg-rose/10 text-rose">🗑️</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {products.length===0 && <tr><td colSpan="6" className="text-center py-8 text-inksoft">কোনো পণ্য নেই</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {tab==='orders' && (
+          <div className="bg-white rounded-2xl border border-line p-6">
+            <h3 className="font-disp-en font-semibold text-lg mb-5">সকল অর্ডার</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="text-left text-xs uppercase text-inksoft border-b-2 border-line">
+                  <th className="py-2 px-2">অর্ডার#</th><th className="px-2">কাস্টমার</th><th className="px-2">ফোন</th><th className="px-2">মোট</th><th className="px-2">স্ট্যাটাস</th><th className="px-2">তারিখ</th><th className="px-2"></th>
+                </tr></thead>
+                <tbody>
+                  {orders.map(o=>(
+                    <tr key={o.id} className="border-b border-line">
+                      <td className="py-2 px-2 font-medium">#{o.order_number}</td>
+                      <td className="px-2">{o.customer_name}</td>
+                      <td className="px-2">{o.phone}</td>
+                      <td className="px-2">{fmtMoney(o.total)}</td>
+                      <td className="px-2"><StatusBadge status={o.status}/></td>
+                      <td className="px-2">{new Date(o.created_at).toLocaleDateString('en-GB')}</td>
+                      <td className="px-2 whitespace-nowrap">
+                        <button onClick={()=>setViewingOrder(o)} className="w-8 h-8 rounded-lg bg-linen mr-1">👁️</button>
+                        <button onClick={()=>deleteOrder(o.id)} className="w-8 h-8 rounded-lg bg-rose/10 text-rose">🗑️</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {orders.length===0 && <tr><td colSpan="7" className="text-center py-8 text-inksoft">কোনো অর্ডার নেই</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {tab==='settings' && settings && <SettingsPanel settings={settings} onSaved={(s)=>{ setSettings(s); showToast('✅ সেটিংস সংরক্ষণ করা হয়েছে'); }}/>}
+      </div>
+
+      {editingProduct !== undefined && (
+        <ProductFormModal product={editingProduct} onClose={()=>setEditingProduct(undefined)} onSaved={()=>{ setEditingProduct(undefined); loadProducts(); showToast('✅ সংরক্ষণ করা হয়েছে'); }}/>
+      )}
+      {viewingOrder && <OrderDetailModal order={viewingOrder} onClose={()=>setViewingOrder(null)} onUpdated={()=>{ setViewingOrder(null); loadOrders(); showToast('✅ স্ট্যাটাস আপডেট হয়েছে'); }}/>}
+      <Toast msg={toastMsg}/>
+    </div>
+  );
+}
+
+function StatCard({label, value}){
+  return <div className="bg-white border border-line rounded-2xl p-4"><div className="font-disp-en font-bold text-2xl text-ink">{value}</div><div className="text-xs text-inksoft">{label}</div></div>;
+}
+function StatusBadge({status}){
+  const map = { pending:'bg-amber-100 text-amber-700', confirmed:'bg-blue-100 text-blue-700', shipped:'bg-purple-100 text-purple-700', delivered:'bg-green-100 text-green-700', cancelled:'bg-red-100 text-red-700' };
+  return <span className={"text-xs font-bold px-2.5 py-1 rounded-full " + (map[status]||'bg-gray-100')}>{status}</span>;
+}
+
+async function uploadToMedia(file, folder){
+  const ext = file.name.split('.').pop();
+  const path = folder + '/' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '.' + ext;
+  const { error } = await sb.storage.from('media').upload(path, file, { upsert:true });
+  if(error) throw error;
+  const { data } = sb.storage.from('media').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+function ProductFormModal({product, onClose, onSaved}){
+  const isEdit = !!product;
+  const [form, setForm] = useState({
+    name: product?.name||'', description: product?.description||'', category: product?.category||'Fashion',
+    stock: product?.stock ?? 100, price: product?.price||'', compare_price: product?.compare_price||'', featured: product?.featured||false
+  });
+  const [imgFile, setImgFile] = useState(null);
+  const [imgPreview, setImgPreview] = useState(product?.image_url || null);
+  const [loading, setLoading] = useState(false);
+
+  const onFile = (e) => {
+    const file = e.target.files[0]; if(!file) return;
+    setImgFile(file);
+    const reader = new FileReader();
+    reader.onload = ()=> setImgPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const submit = async (e) => {
+    e.preventDefault(); setLoading(true);
+    try{
+      let imageUrl = product?.image_url || null;
+      if(imgFile) imageUrl = await uploadToMedia(imgFile, 'products');
+      const payload = {
+        name: form.name.trim(), description: form.description.trim(), category: form.category,
+        stock: parseInt(form.stock||0), price: parseFloat(form.price),
+        compare_price: form.compare_price ? parseFloat(form.compare_price) : null,
+        featured: form.featured, image_url: imageUrl
+      };
+      if(isEdit){
+        const { error } = await sb.from('products').update(payload).eq('id', product.id);
+        if(error) throw error;
+      } else {
+        payload.slug = payload.name.toLowerCase().trim().replace(new RegExp('[^a-z0-9\u0980-\u09FF]+','g'),'-').replace(/^-+|-+$/g,'') + '-' + Date.now().toString().slice(-5);
+        const { error } = await sb.from('products').insert(payload);
+        if(error) throw error;
+      }
+      onSaved();
+    }catch(err){ console.error(err); alert('সংরক্ষণ করতে সমস্যা হয়েছে'); }
+    finally{ setLoading(false); }
+  };
+
+  return (
+    <Modal onClose={onClose} title={isEdit ? 'পণ্য সম্পাদনা করুন' : 'নতুন পণ্য যোগ করুন'}>
+      <form onSubmit={submit} className="space-y-4">
+        <Field label="পণ্যের ছবি">
+          <label className="block border-2 border-dashed border-line rounded-xl p-4 text-center cursor-pointer bg-linen">
+            {imgPreview ? <img src={imgPreview} className="max-h-28 mx-auto mb-2 rounded-lg"/> : <span className="text-sm text-inksoft">📤 ছবি আপলোড করতে ক্লিক করুন</span>}
+            <input type="file" accept="image/*" className="hidden" onChange={onFile}/>
+          </label>
+        </Field>
+        <Field label="পণ্যের নাম"><input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+        <Field label="বিবরণ"><textarea rows="3" value={form.description} onChange={e=>setForm({...form,description:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="ক্যাটাগরি">
+            <select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen">
+              <option value="Fashion">Fashion</option><option value="Gadgets">Gadgets</option>
+            </select>
+          </Field>
+          <Field label="স্টক"><input type="number" value={form.stock} onChange={e=>setForm({...form,stock:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="দাম (৳)"><input required type="number" step="0.01" value={form.price} onChange={e=>setForm({...form,price:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+          <Field label="আগের দাম (ঐচ্ছিক)"><input type="number" step="0.01" value={form.compare_price} onChange={e=>setForm({...form,compare_price:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+        </div>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.featured} onChange={e=>setForm({...form,featured:e.target.checked})}/> হোমপেজে ফিচার্ড দেখান</label>
+        <button disabled={loading} className="w-full bg-forest text-white font-semibold py-3 rounded-full hover:bg-forestdeep flex items-center justify-center gap-2">{loading && <span className="spinner"></span>} পণ্য সংরক্ষণ করুন</button>
+      </form>
+    </Modal>
+  );
+}
+
+function OrderDetailModal({order, onClose, onUpdated}){
+  const [items, setItems] = useState([]);
+  const [status, setStatus] = useState(order.status);
+  const [loading, setLoading] = useState(false);
+  useEffect(()=>{ sb.from('order_items').select('*').eq('order_id', order.id).then(({data})=>setItems(data||[])); },[]);
+
+  const update = async () => {
+    setLoading(true);
+    const { error } = await sb.from('orders').update({ status }).eq('id', order.id);
+    setLoading(false);
+    if(!error) onUpdated();
+  };
+
+  return (
+    <Modal onClose={onClose} title="অর্ডার বিস্তারিত">
+      <div className="flex justify-between items-start mb-3">
+        <div><b>{order.customer_name}</b><div className="text-sm text-inksoft">{order.phone}</div></div>
+        <StatusBadge status={order.status}/>
+      </div>
+      <p className="text-sm text-inksoft mb-3">📍 {order.address}, {order.city}</p>
+      {order.notes && <p className="text-sm bg-linen rounded-lg px-3 py-2 mb-3">📝 {order.notes}</p>}
+      <div className="border-t border-line pt-3 space-y-1.5">
+        {items.map(it=>(
+          <div key={it.id} className="flex justify-between text-sm"><span>{it.product_name} × {it.quantity}</span><b>{fmtMoney(it.price*it.quantity)}</b></div>
+        ))}
+        <div className="flex justify-between font-disp-en font-bold pt-2 border-t border-dashed border-line"><span>Total</span><span>{fmtMoney(order.total)}</span></div>
+      </div>
+      <Field label="স্ট্যাটাস পরিবর্তন করুন">
+        <select value={status} onChange={e=>setStatus(e.target.value)} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen mt-1">
+          {['pending','confirmed','shipped','delivered','cancelled'].map(s=><option key={s} value={s}>{s}</option>)}
+        </select>
+      </Field>
+      <button disabled={loading} onClick={update} className="w-full bg-forest text-white font-semibold py-3 rounded-full hover:bg-forestdeep mt-4 flex items-center justify-center gap-2">{loading && <span className="spinner"></span>} স্ট্যাটাস আপডেট করুন</button>
+    </Modal>
+  );
+}
+
+function SettingsPanel({settings, onSaved}){
+  const [form, setForm] = useState(settings);
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(settings.logo_url);
+  const [heroFile, setHeroFile] = useState(null);
+  const [heroPreview, setHeroPreview] = useState(settings.hero_image_url);
+  const [loading, setLoading] = useState(false);
+
+  const onLogoFile = (e) => { const f=e.target.files[0]; if(!f) return; setLogoFile(f); const r=new FileReader(); r.onload=()=>setLogoPreview(r.result); r.readAsDataURL(f); };
+  const onHeroFile = (e) => { const f=e.target.files[0]; if(!f) return; setHeroFile(f); const r=new FileReader(); r.onload=()=>setHeroPreview(r.result); r.readAsDataURL(f); };
+
+  const submit = async (e) => {
+    e.preventDefault(); setLoading(true);
+    try{
+      let logoUrl = settings.logo_url, heroUrl = settings.hero_image_url;
+      if(logoFile) logoUrl = await uploadToMedia(logoFile, 'branding');
+      if(heroFile) heroUrl = await uploadToMedia(heroFile, 'branding');
+      const payload = {
+        site_name_en: form.site_name_en, site_name_bn: form.site_name_bn,
+        phone: form.phone, address: form.address,
+        delivery_charge_dhaka: parseFloat(form.delivery_charge_dhaka||0),
+        delivery_charge_outside: parseFloat(form.delivery_charge_outside||0),
+        logo_url: logoUrl, hero_image_url: heroUrl, updated_at: new Date().toISOString()
+      };
+      const { error } = await sb.from('site_settings').update(payload).eq('id',1);
+      if(error) throw error;
+      onSaved({...settings, ...payload});
+    }catch(err){ console.error(err); alert('সংরক্ষণ করতে সমস্যা হয়েছে'); }
+    finally{ setLoading(false); }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-line p-6 max-w-xl">
+      <h3 className="font-disp-en font-semibold text-lg mb-5">দোকানের সেটিংস</h3>
+      <form onSubmit={submit} className="space-y-4">
+        <Field label="লোগো">
+          <label className="block border-2 border-dashed border-line rounded-xl p-4 text-center cursor-pointer bg-linen">
+            {logoPreview ? <img src={logoPreview} className="max-h-20 mx-auto mb-2 rounded-lg"/> : <span className="text-sm text-inksoft">📤 লোগো আপলোড করুন</span>}
+            <input type="file" accept="image/*" className="hidden" onChange={onLogoFile}/>
+          </label>
+        </Field>
+        <Field label="হোমপেজ হিরো ছবি">
+          <label className="block border-2 border-dashed border-line rounded-xl p-4 text-center cursor-pointer bg-linen">
+            {heroPreview ? <img src={heroPreview} className="max-h-28 mx-auto mb-2 rounded-lg"/> : <span className="text-sm text-inksoft">📤 হিরো ছবি আপলোড করুন</span>}
+            <input type="file" accept="image/*" className="hidden" onChange={onHeroFile}/>
+          </label>
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Site Name (English)"><input value={form.site_name_en||''} onChange={e=>setForm({...form,site_name_en:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+          <Field label="সাইটের নাম (বাংলা)"><input value={form.site_name_bn||''} onChange={e=>setForm({...form,site_name_bn:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="ফোন নম্বর"><input value={form.phone||''} onChange={e=>setForm({...form,phone:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+          <Field label="ঠিকানা"><input value={form.address||''} onChange={e=>setForm({...form,address:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="ডেলিভারি চার্জ (ঢাকা)"><input type="number" value={form.delivery_charge_dhaka} onChange={e=>setForm({...form,delivery_charge_dhaka:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+          <Field label="ডেলিভারি চার্জ (বাইরে)"><input type="number" value={form.delivery_charge_outside} onChange={e=>setForm({...form,delivery_charge_outside:e.target.value})} className="w-full border border-line rounded-xl px-4 py-2.5 bg-linen"/></Field>
+        </div>
+        <button disabled={loading} className="bg-forest text-white font-semibold px-6 py-3 rounded-full hover:bg-forestdeep flex items-center gap-2">{loading && <span className="spinner"></span>} সেটিংস সংরক্ষণ করুন</button>
+      </form>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
